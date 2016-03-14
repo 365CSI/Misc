@@ -1,5 +1,5 @@
 /*
-* Weekly Cartoon - every week another cartoon form a Picture Library
+* Weekly Cartoon - every week another cartoon from a Picture Library using the SharePoint Publishing mechanism
 *
 * reads the next unpublished image from a `Cartoons` Library
 * if the previous approved image was over 7 days ago it Publishes this unpublished image
