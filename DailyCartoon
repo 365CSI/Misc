@@ -1,0 +1,44 @@
+/*
+* Weekly Cartoon - every week another cartoon form a Picture Library
+*
+* reads the next unpublished image from a `Cartoons` Library
+* if the previous approved image was over 7 days ago it Publishes this unpublished image
+/*
+var approvalStatus = [[], [], [], [], []],//0=Approved , 1=Denied , 2=Pending , 3=Draft , 4=Scheduled
+    context = new SP.ClientContext.get_current(),
+    list = context.get_web().get_lists().getByTitle('Cartoons'),
+    query = new SP.CamlQuery();
+//noinspection HtmlUnknownAttribute
+var XMLformat = "<View Scope='RecursiveAll'><Query><OrderBy><FieldRef Name='{0}' Ascending='{1}' /><FieldRef Name='{2}' Ascending='{3}' /></OrderBy></Query></View>";
+query.set_viewXml(String.format(XMLformat, '_ModerationStatus', 'TRUE', 'Modified', 'TRUE'));
+var items = list.getItems(query);
+context.load(items);
+context.executeQueryAsync(
+    function () {
+        var listEnumerator = items.getEnumerator();
+        var lastapproval = new Date();//init on today
+        var newapproval = false;
+        while (listEnumerator.moveNext()) {
+            var file = listEnumerator.get_current(),
+                filedata = file.get_fieldValues(),
+                _ModerationStatus = filedata._ModerationStatus;
+            console.info(_ModerationStatus, filedata.FileRef, filedata.Modified);
+            if (_ModerationStatus !== 0 && !newapproval && !filedata.CheckoutUser) {
+                newapproval = GetDaysAfterToday(lastapproval) < 7; // last approved file was over 7 days ago
+                if (newapproval) {
+                    _ModerationStatus = 0; // Approved
+                    file.set_item('_ModerationStatus', _ModerationStatus);
+                    file.set_item('_ModerationComments', 'Approved by DailyCartoon');
+                    file.update();
+                    context.executeQueryAsync(null, error);
+                }
+            }
+            lastapproval = filedata.Modified;
+            approvalStatus[_ModerationStatus].unshift(filedata); // add the file at the start of the array
+        }
+        console.info('Last Approved cartoon:', approvalStatus[0][0].FileRef);
+    },
+    function error() {
+      console.error(arguments[1].get_message());
+    }
+);
